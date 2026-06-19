@@ -1,0 +1,133 @@
+#include <iostream>
+#include <random>
+#include <chrono>
+#include <algorithm> // for stable_sort
+using namespace std;
+using namespace std::chrono;
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+#if defined(_MSC_VER)
+#pragma warning(disable: 4388 4389)
+#endif
+
+template<typename T>
+void print(const std::vector<T>& v) {
+	if (v.size() <= 10) {
+		for (int i = 0; i < v.size(); ++i) {
+			cout << v[i] << " ";
+		}
+	} else { // 0 1 2 3 4 . . . 995 996 997 998 999
+		for (int i = 0; i < 5; ++i) {
+			cout << v[i] << " ";
+		}
+		cout << ". . . ";
+		for (int i = v.size() - 5; i < v.size(); ++i) {
+			cout << v[i] << " ";
+		}
+	}
+	cout << endl;
+}
+
+void merge(int n, int A[], int B[], int p, int q, int r) {
+	// copy A[p..r) to B[p..r)
+	for (int i = p; i < r; ++i) {
+		B[i] = A[i];
+	}
+	// merge B[p..q) and B[q..r) to A[p..r)
+	int i = p; // index for B[p..q)
+	int j = q; // index for B[q..r)
+	int k = p; // index to A[p..r)
+	while ((i < q) && (j < r)) {
+		if (B[i] <= B[j]) {
+			A[k++] = B[i++];
+		} else {
+			A[k++] = B[j++];
+		}
+	}
+	while (i < q) {
+		A[k++] = B[i++];
+	}
+	while (j < r) {
+		A[k++] = B[j++];
+	}
+}
+
+void merge_sort(int n, int A[], int B[], int p, int r) {
+	if ((r - p) <= 1) return; // if 0 or 1 element, just return
+	int q = (p + r) / 2; // mid point
+	merge_sort(n, A, B, p, q); // sort A[p..q)
+	merge_sort(n, A, B, q, r); // sort A[q..r)
+	merge(n, A, B, p, q, r);
+}
+
+void setRand(std::vector<int>& v, std::default_random_engine& re) {
+	std::uniform_int_distribution<int> unif_dist(0, 999);
+	for (int i = 0; i < v.size(); ++i) {
+		v[i] = unif_dist(re);
+	}
+}
+
+void setRand(std::vector<float>& v, std::default_random_engine& re) {
+	std::uniform_real_distribution<float> unif_dist(0.0F, 1.0F);
+	for (int i = 0; i < v.size(); ++i) {
+		v[i] = unif_dist(re);
+	}
+}
+
+int main(int argc, char* argv[]) {
+	int N = 1000000;
+	if (argc >= 2) { // get the argv[1] to long int
+		char* ptr = NULL;
+		long val = strtol(argv[1], &ptr, 0);
+		if (ptr != NULL && *ptr != '\0') {
+			switch (*ptr) {
+			case 'k': case 'K': val *= 1024; break; // kilo
+			case 'm': case 'M': val *= (1024 * 1024); break; // mega
+			case 'g': case 'G': val *= (1024 * 1024 * 1024); break; // giga
+			}
+		}
+		if (val > 0) {
+			N = val;
+		}
+	}
+	std::vector<int> A(N);
+	std::vector<int> B(N);
+	std::vector<int> C(N);
+	std::random_device rd; // random device
+	std::default_random_engine re(rd()); // random engine
+	setRand(A, re);
+	std::copy(A.begin(), A.end(), C.begin());
+	// merge_sort
+	cout << "before:\t\tA[" << A.size() << "] : ";
+	print(A);
+	{
+		steady_clock::time_point start = steady_clock::now();
+		merge_sort(N, A.data(), B.data(), 0, N);
+		steady_clock::time_point end = steady_clock::now();
+		long long elapsed_msec = duration_cast<milliseconds>(end - start).count();
+		cout << "elapsed time = " << elapsed_msec << " msec" << endl;
+	}
+	cout << "merge_sort:\tA[" << A.size() << "] : ";
+	print(A);
+	// stable_sort
+	cout << "before:\t\tC[" << C.size() << "] : ";
+	print(C);
+	{
+		steady_clock::time_point start = steady_clock::now();
+		std::stable_sort(C.begin(), C.end());
+		steady_clock::time_point end = steady_clock::now();
+		long long elapsed_msec = duration_cast<milliseconds>(end - start).count();
+		cout << "elapsed time = " << elapsed_msec << " msec" << endl;
+	}
+	cout << "stable_sort:\tC[" << C.size() << "] : ";
+	print(C);
+	// diff
+	if (std::equal(A.begin(), A.end(), C.begin())) {
+		cout << "identical" << endl;
+	} else {
+		cout << "different ****************" << endl;
+	}
+	// done
+	return 0;
+}
